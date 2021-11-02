@@ -1,3 +1,6 @@
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Stat {
     Knowledge,
@@ -5,6 +8,7 @@ pub enum Stat {
     Proficiency,
 }
 
+#[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Spirit {
     TheVeil,
@@ -66,6 +70,7 @@ impl Spirit {
     }
 }
 
+#[wasm_bindgen(js_name = SpiritConnection)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Connection {
     Ineptitude,
@@ -75,6 +80,7 @@ pub enum Connection {
     Wizardry,
 }
 
+// #[wasm_bindgen(js_class = SpiritConnection)]
 impl Connection {
     pub fn die(self) -> u8 {
         match self {
@@ -89,6 +95,7 @@ impl Connection {
 
 type SpiritTuple = (Spirit, Connection);
 
+#[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SpiritSelection {
     the_veil: SpiritTuple,
@@ -181,6 +188,7 @@ fn is_valid(ss: &[Connection]) -> bool {
     mastery_count == 1 && expertise_count == 3 && competence_count == 5 && ineptitude_count == 6
 }
 
+#[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Stats {
     discipline: u32,
@@ -188,6 +196,7 @@ pub struct Stats {
     proficiency: u32,
 }
 
+#[wasm_bindgen]
 impl Stats {
     pub fn new(ss: &SpiritSelection) -> Self {
         let mut discipline = 1;
