@@ -19,6 +19,9 @@ module.exports = merge(common, {
       crateDirectory: crate,
       forceMode: 'production',
       extraArgs: '--profiling',
+      watchDirectories: [
+        path.resolve(crate, 'spirits-within', 'src')
+      ],
     }),
   ],
   experiments: {

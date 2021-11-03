@@ -1,3 +1,2 @@
-import {Stat, Spirit, SpiritConnection} from './pkg'
-
-console.log(Stat)
+import { main } from './pkg';
+main()

@@ -1,5 +1,10 @@
+[workspace]
+members = [
+    "spirits-within"
+]
+
 [package]
-name = "spirits-within"
+name = "spirits-within-app"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +12,11 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2"
-#web-sys = "0.3"
-#js-sys = "0.3"
+spirits-within = { path = "./spirits-within" }
+
+eyre = "0.6"
+solstice = "0.1"
+
+iced_winit = "0.3"
+iced_glutin = "0.2"
+iced_solstice = "0.1"
