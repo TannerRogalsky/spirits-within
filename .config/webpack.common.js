@@ -1,8 +1,7 @@
 const path = require("path");
-// const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
-const dist = path.resolve(__dirname, "dist");
+const dist = path.resolve(__dirname, "..", "docs");
 
 module.exports = {
   entry: './index.js',
@@ -11,7 +10,6 @@ module.exports = {
     filename: '[name].js',
   },
   plugins: [
-  	// new CleanWebpackPlugin(),
     new HtmlWebpackPlugin()
   ],
   experiments: {
