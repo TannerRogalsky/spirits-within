@@ -1,5 +1,8 @@
-use iced_glutin::{pick_list, Column, Command, Element, Length, Row, Text};
+#[cfg(target_arch = "wasm32")]
+pub mod web;
+
 use iced_solstice::Renderer;
+use iced_winit::{pick_list, Column, Command, Element, Length, Row, Text};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -18,15 +21,15 @@ impl Application {
     }
 }
 
-impl iced_glutin::Program for Application {
+impl iced_winit::Program for Application {
     type Renderer = Renderer;
     type Message = Message;
-    type Clipboard = iced_glutin::Clipboard;
+    // type Clipboard = iced_winit::Clipboard;
 
     fn update(
         &mut self,
         message: Self::Message,
-        _clipboard: &mut Self::Clipboard,
+        // _clipboard: &mut Self::Clipboard,
     ) -> Command<Self::Message> {
         match message {
             Message::Selected(index, connection) => {
@@ -65,9 +68,9 @@ impl iced_glutin::Program for Application {
 
         let mut root = Column::new()
             .push(
-                iced_glutin::Container::new(Text::new("test"))
+                iced_winit::Container::new(Text::new("test"))
                     .width(Length::Fill)
-                    .style(CustomStyle::with_bg(iced_glutin::Color::from([1., 0., 0.]))),
+                    .style(CustomStyle::with_bg(iced_winit::Color::from([1., 0., 0.]))),
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -109,7 +112,7 @@ struct CustomStyle {
 }
 
 impl CustomStyle {
-    pub fn with_bg(color: iced_glutin::Color) -> Self {
+    pub fn with_bg(color: iced_winit::Color) -> Self {
         Self {
             style: widget::container::Style {
                 background: Some(Background::Color(color)),

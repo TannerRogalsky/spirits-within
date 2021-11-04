@@ -11,12 +11,38 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz"]
+
+[package.metadata.wasm-pack.profile.profiling]
+wasm-opt = false
+
+[profile.release]
+lto = "fat"         # turn on Link-Time Optimizations
+codegen-units = 1   # trade compile time with maximum optimization
+opt-level = "z"     # optimize for size
+
 [dependencies]
 spirits-within = { path = "./spirits-within" }
 
 eyre = "0.6"
+log = "0.4"
 solstice = "0.1"
 
-iced_winit = "0.3"
-iced_glutin = "0.2"
-iced_solstice = "0.1"
+#iced_winit = "0.3"
+#iced_glutin = "0.2"
+#iced_solstice = "0.1"
+
+console_error_panic_hook = "0.1"
+
+iced_winit = { path = "../iced/winit", default-features = false }
+iced_solstice = { path = "../iced_solstice" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+iced_glutin = { path = "../iced/glutin" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+web-sys = "0.3"
+wasm-logger = "0.2"
+crossbeam-channel = "0.5"
