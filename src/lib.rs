@@ -186,8 +186,8 @@ impl iced_winit::Program for Application {
                     let text = format!("{:#?}", stats);
                     root = root.push(Text::new(text));
                 }
-                Err(_) => {
-                    eprintln!("OH GOD OH NO")
+                Err(err) => {
+                    log::error!("OH GOD OH NO: {:?}", err);
                 }
             }
         }
