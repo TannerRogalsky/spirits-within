@@ -7,6 +7,7 @@ use iced_winit::{pick_list, Column, Command, Element, Length, Row, Text};
 #[derive(Debug, Clone)]
 pub enum Message {
     Selected(usize, SelectionOption),
+    Reset,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -53,6 +54,8 @@ impl std::fmt::Display for SelectionOption {
 
 #[derive(Debug, Clone, Default)]
 pub struct Application {
+    reset_button: iced_winit::button::State,
+
     selected: [SelectionOption; 15],
     spirit_connections: [pick_list::State<SelectionOption>; 15],
     selection_options: Vec<SelectionOption>,
@@ -113,6 +116,10 @@ impl iced_winit::Program for Application {
                 self.selected[index] = connection;
                 self.update_selection_options();
             }
+            Message::Reset => {
+                self.selected = [SelectionOption::None; 15];
+                self.update_selection_options();
+            }
         }
 
         Command::none()
@@ -127,6 +134,7 @@ impl iced_winit::Program for Application {
             .enumerate()
             .map(|(index, ((state, spirit), selected))| {
                 Column::new()
+                    .align_items(iced_winit::Alignment::Center)
                     .width(Length::Fill)
                     .push(Text::new(format!("{:?}", spirit)))
                     .push(pick_list::PickList::new(
@@ -141,9 +149,18 @@ impl iced_winit::Program for Application {
 
         let mut root = Column::new()
             .push(
-                iced_winit::Container::new(Text::new("test"))
-                    .width(Length::Fill)
-                    .style(CustomStyle::with_bg(iced_winit::Color::from([1., 0., 0.]))),
+                iced_winit::Container::new(
+                    iced_winit::Button::new(&mut self.reset_button, Text::new("Reset"))
+                        .on_press(Message::Reset)
+                        .style(CustomStyle::with_bg(iced_winit::Color::from([
+                            0.9, 0.2, 0.3,
+                        ]))),
+                )
+                .align_x(iced_winit::alignment::Horizontal::Right)
+                .width(Length::Fill)
+                .style(CustomStyle::with_bg(iced_winit::Color::from([
+                    0.7, 0.7, 0.7,
+                ]))),
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -179,24 +196,36 @@ impl iced_winit::Program for Application {
     }
 }
 
-use iced_solstice::{widget, Background};
 struct CustomStyle {
-    style: widget::container::Style,
+    style: iced_solstice::widget::container::Style,
 }
 
 impl CustomStyle {
     pub fn with_bg(color: iced_winit::Color) -> Self {
         Self {
-            style: widget::container::Style {
-                background: Some(Background::Color(color)),
+            style: iced_solstice::widget::container::Style {
+                background: Some(iced_solstice::Background::Color(color)),
                 ..Default::default()
             },
         }
     }
 }
 
-impl widget::container::StyleSheet for CustomStyle {
-    fn style(&self) -> widget::container::Style {
+impl iced_solstice::widget::container::StyleSheet for CustomStyle {
+    fn style(&self) -> iced_solstice::widget::container::Style {
         self.style
+    }
+}
+
+impl iced_solstice::button::StyleSheet for CustomStyle {
+    fn active(&self) -> iced_solstice::button::Style {
+        iced_solstice::button::Style {
+            shadow_offset: Default::default(),
+            background: self.style.background,
+            border_radius: self.style.border_radius,
+            border_width: self.style.border_width,
+            border_color: iced_winit::Color::BLACK,
+            text_color: self.style.text_color.unwrap_or(iced_winit::Color::BLACK),
+        }
     }
 }
