@@ -6,34 +6,112 @@ use iced_winit::{pick_list, Column, Command, Element, Length, Row, Text};
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Selected(usize, spirits_within::Connection),
+    Selected(usize, SelectionOption),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SelectionOption {
+    None,
+    Mastery,
+    Expertise,
+    Competence,
+    Ineptitude,
+}
+
+impl SelectionOption {
+    pub fn is_some(self) -> bool {
+        self != SelectionOption::None
+    }
+}
+
+impl Default for SelectionOption {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+impl From<SelectionOption> for Option<spirits_within::Connection> {
+    fn from(v: SelectionOption) -> Self {
+        match v {
+            SelectionOption::None => None,
+            SelectionOption::Mastery => Some(spirits_within::Connection::Mastery),
+            SelectionOption::Expertise => Some(spirits_within::Connection::Expertise),
+            SelectionOption::Competence => Some(spirits_within::Connection::Competence),
+            SelectionOption::Ineptitude => Some(spirits_within::Connection::Ineptitude),
+        }
+    }
+}
+
+impl std::fmt::Display for SelectionOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match Into::<Option<spirits_within::Connection>>::into(*self) {
+            Some(connection) => connection.fmt(f),
+            None => write!(f, ""),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Application {
-    selected: [Option<spirits_within::Connection>; 15],
-    spirit_connections: [pick_list::State<spirits_within::Connection>; 15],
+    selected: [SelectionOption; 15],
+    spirit_connections: [pick_list::State<SelectionOption>; 15],
+    selection_options: Vec<SelectionOption>,
 }
 
 impl Application {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            selection_options: vec![
+                SelectionOption::None,
+                SelectionOption::Mastery,
+                SelectionOption::Expertise,
+                SelectionOption::Competence,
+                SelectionOption::Ineptitude,
+            ],
+            ..Default::default()
+        }
+    }
+
+    fn update_selection_options(&mut self) {
+        self.selection_options.clear();
+        self.selection_options.push(SelectionOption::None);
+        let mut mastery = 0;
+        let mut expertise = 0;
+        let mut competence = 0;
+        let mut inept = 0;
+        for selected in self.selected.iter() {
+            match selected {
+                SelectionOption::None => {}
+                SelectionOption::Mastery => mastery += 1,
+                SelectionOption::Expertise => expertise += 1,
+                SelectionOption::Competence => competence += 1,
+                SelectionOption::Ineptitude => inept += 1,
+            }
+        }
+        if mastery < spirits_within::SpiritSelection::MASTERY_COUNT {
+            self.selection_options.push(SelectionOption::Mastery);
+        }
+        if expertise < spirits_within::SpiritSelection::EXPERTISE_COUNT {
+            self.selection_options.push(SelectionOption::Expertise);
+        }
+        if competence < spirits_within::SpiritSelection::COMPETENCE_COUNT {
+            self.selection_options.push(SelectionOption::Competence);
+        }
+        if inept < spirits_within::SpiritSelection::INEPTITUDE_COUNT {
+            self.selection_options.push(SelectionOption::Ineptitude);
+        }
     }
 }
 
 impl iced_winit::Program for Application {
     type Renderer = Renderer;
     type Message = Message;
-    // type Clipboard = iced_winit::Clipboard;
 
-    fn update(
-        &mut self,
-        message: Self::Message,
-        // _clipboard: &mut Self::Clipboard,
-    ) -> Command<Self::Message> {
+    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::Selected(index, connection) => {
-                self.selected[index] = Some(connection);
+                self.selected[index] = connection;
+                self.update_selection_options();
             }
         }
 
@@ -53,13 +131,8 @@ impl iced_winit::Program for Application {
                     .push(Text::new(format!("{:?}", spirit)))
                     .push(pick_list::PickList::new(
                         state,
-                        &[
-                            spirits_within::Connection::Ineptitude,
-                            spirits_within::Connection::Competence,
-                            spirits_within::Connection::Expertise,
-                            spirits_within::Connection::Mastery,
-                        ][..],
-                        selected,
+                        &self.selection_options,
+                        Some(selected),
                         move |connection| Message::Selected(index, connection),
                     ))
                     .into()
@@ -87,7 +160,7 @@ impl iced_winit::Program for Application {
                 .selected
                 .iter()
                 .copied()
-                .filter_map(|s| s)
+                .filter_map(|s| s.into())
                 .collect::<Vec<_>>();
             let selected = spirits_within::SpiritSelection::try_from(selected);
             match selected {

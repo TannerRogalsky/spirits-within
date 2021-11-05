@@ -57,7 +57,7 @@ impl Application {
         let cursor_position = PhysicalPosition::new(-1.0, -1.0);
         // let modifiers = ModifiersState::default();
 
-        let controls = crate::Application::default();
+        let controls = crate::Application::new();
 
         let state = program::State::new(
             controls,

@@ -136,6 +136,13 @@ pub struct SpiritSelection {
     the_pulse: SpiritTuple,
 }
 
+impl SpiritSelection {
+    pub const MASTERY_COUNT: u32 = 1;
+    pub const EXPERTISE_COUNT: u32 = 3;
+    pub const COMPETENCE_COUNT: u32 = 5;
+    pub const INEPTITUDE_COUNT: u32 = 6;
+}
+
 impl TryFrom<[Connection; 15]> for SpiritSelection {
     type Error = ();
 
@@ -222,7 +229,10 @@ fn is_valid(ss: &[Connection]) -> bool {
         }
     }
 
-    mastery_count == 1 && expertise_count == 3 && competence_count == 5 && ineptitude_count == 6
+    mastery_count == SpiritSelection::MASTERY_COUNT
+        && expertise_count == SpiritSelection::EXPERTISE_COUNT
+        && competence_count == SpiritSelection::COMPETENCE_COUNT
+        && ineptitude_count == SpiritSelection::INEPTITUDE_COUNT
 }
 
 #[wasm_bindgen]

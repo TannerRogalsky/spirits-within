@@ -33,8 +33,6 @@ solstice = "0.1"
 #iced_glutin = "0.2"
 #iced_solstice = "0.1"
 
-console_error_panic_hook = "0.1"
-
 iced_winit = { path = "../iced/winit", default-features = false }
 iced_solstice = { path = "../iced_solstice" }
 
@@ -45,4 +43,5 @@ iced_glutin = { path = "../iced/glutin" }
 wasm-bindgen = "0.2"
 web-sys = "0.3"
 wasm-logger = "0.2"
+console_error_panic_hook = "0.1"
 crossbeam-channel = "0.5"

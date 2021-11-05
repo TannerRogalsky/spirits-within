@@ -67,7 +67,7 @@ pub fn main() {
     let mut renderer = Renderer::new(Backend::new(&mut gl, Settings::default()));
     let mut clipboard = Clipboard::connect(window_ctx.window());
 
-    let controls = spirits_within_app::Application::default();
+    let controls = spirits_within_app::Application::new();
 
     let mut state = program::State::new(
         controls,
