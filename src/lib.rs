@@ -3,7 +3,6 @@ pub mod web;
 
 use iced_solstice::Renderer;
 use iced_winit::{pick_list, Column, Command, Element, Length, Row, Text};
-use spirits_within::Spirit;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -188,7 +187,7 @@ impl std::ops::Index<spirits_within::Spirit> for SpiritSelection {
 }
 
 impl std::ops::IndexMut<spirits_within::Spirit> for SpiritSelection {
-    fn index_mut(&mut self, index: Spirit) -> &mut Self::Output {
+    fn index_mut(&mut self, index: spirits_within::Spirit) -> &mut Self::Output {
         use spirits_within::Spirit::*;
         match index {
             TheVeil => &mut self.the_veil,
@@ -323,17 +322,50 @@ impl iced_winit::Program for Application {
                 )
             });
 
-        let mut rows = std::collections::HashMap::from(
-            spirits_within::Stat::LIST.map(|s| (s, Vec::<Element<_, _>>::new())),
-        );
-        for SelectionState {
-            spirit,
-            selection,
-            state,
-        } in &mut self.selected
-        {
-            let spirit = *spirit;
-            let row = rows.get_mut(&spirit.stat()).unwrap();
+        struct Rows<T> {
+            proficiency: Vec<T>,
+            knowledge: Vec<T>,
+            discipline: Vec<T>,
+        }
+
+        impl<T> Default for Rows<T> {
+            fn default() -> Self {
+                Self {
+                    proficiency: Vec::with_capacity(5),
+                    knowledge: Vec::with_capacity(5),
+                    discipline: Vec::with_capacity(5),
+                }
+            }
+        }
+
+        impl<T> IntoIterator for Rows<T> {
+            type Item = (spirits_within::Stat, Vec<T>);
+            type IntoIter = std::array::IntoIter<Self::Item, 3>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                use spirits_within::Stat::*;
+                [
+                    (Proficiency, self.proficiency),
+                    (Knowledge, self.knowledge),
+                    (Discipline, self.discipline),
+                ]
+                .into_iter()
+            }
+        }
+
+        let mut rows = Rows::default();
+        for state in &mut self.selected {
+            let SelectionState {
+                spirit,
+                selection,
+                ref mut state,
+            } = *state;
+            use spirits_within::Stat;
+            let row = match spirit.stat() {
+                Stat::Knowledge => &mut rows.knowledge,
+                Stat::Discipline => &mut rows.discipline,
+                Stat::Proficiency => &mut rows.proficiency,
+            };
             row.push(
                 Column::new()
                     .align_items(iced_winit::Alignment::Center)
@@ -342,15 +374,14 @@ impl iced_winit::Program for Application {
                     .push(pick_list::PickList::new(
                         state,
                         &self.selection_options,
-                        Some(*selection),
+                        Some(selection),
                         move |connection| Message::Selected(spirit, connection),
                     ))
                     .into(),
             )
         }
 
-        for stat in spirits_within::Stat::LIST {
-            let row = rows.remove(&stat).unwrap();
+        for (stat, row) in rows {
             root = root
                 .push(
                     Row::new()
