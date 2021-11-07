@@ -1,16 +1,19 @@
-use std::fmt::Formatter;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Stat {
     Knowledge,
     Discipline,
     Proficiency,
 }
 
+impl Stat {
+    pub const LIST: [Stat; 3] = [Stat::Knowledge, Stat::Discipline, Stat::Proficiency];
+}
+
 #[wasm_bindgen]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Spirit {
     TheVeil,
     Mirror,
@@ -30,6 +33,24 @@ pub enum Spirit {
 }
 
 impl Spirit {
+    pub const LIST: [Spirit; 15] = [
+        Spirit::TheVeil,
+        Spirit::Mirror,
+        Spirit::ThePath,
+        Spirit::Shadows,
+        Spirit::Instinct,
+        Spirit::Reason,
+        Spirit::Whispers,
+        Spirit::Respect,
+        Spirit::Drama,
+        Spirit::Motion,
+        Spirit::Muscle,
+        Spirit::Kinesis,
+        Spirit::Glamour,
+        Spirit::Balance,
+        Spirit::ThePulse,
+    ];
+
     pub fn stat(self) -> Stat {
         match self {
             Spirit::TheVeil => Stat::Discipline,
@@ -69,14 +90,6 @@ impl Spirit {
             Spirit::ThePulse => "Know the roots, swim with the current's flow, chase the future.",
         }
     }
-
-    pub fn list() -> [Spirit; 15] {
-        use Spirit::*;
-        [
-            TheVeil, Mirror, ThePath, Shadows, Instinct, Reason, Whispers, Respect, Drama, Motion,
-            Muscle, Kinesis, Glamour, Balance, ThePulse,
-        ]
-    }
 }
 
 #[wasm_bindgen(js_name = SpiritConnection)]
@@ -90,7 +103,7 @@ pub enum Connection {
 }
 
 impl std::fmt::Display for Connection {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Connection::Ineptitude => write!(f, "Ineptitude"),
             Connection::Competence => write!(f, "Competence"),
@@ -141,13 +154,42 @@ impl SpiritSelection {
     pub const EXPERTISE_COUNT: u32 = 3;
     pub const COMPETENCE_COUNT: u32 = 5;
     pub const INEPTITUDE_COUNT: u32 = 6;
+
+    pub fn try_from_iter<T: IntoIterator<Item = (Spirit, Connection)>>(
+        iter: T,
+    ) -> Result<Self, ()> {
+        let ss = iter
+            .into_iter()
+            .collect::<std::collections::HashMap<_, _>>();
+        if ss.len() == 15 && is_valid(ss.values()) {
+            Ok(Self {
+                the_veil: (Spirit::TheVeil, ss[&Spirit::TheVeil]),
+                mirror: (Spirit::Mirror, ss[&Spirit::Mirror]),
+                the_path: (Spirit::ThePath, ss[&Spirit::ThePath]),
+                shadows: (Spirit::Shadows, ss[&Spirit::Shadows]),
+                instinct: (Spirit::Instinct, ss[&Spirit::Instinct]),
+                reason: (Spirit::Reason, ss[&Spirit::Reason]),
+                whispers: (Spirit::Whispers, ss[&Spirit::Whispers]),
+                respect: (Spirit::Respect, ss[&Spirit::Respect]),
+                drama: (Spirit::Drama, ss[&Spirit::Drama]),
+                motion: (Spirit::Motion, ss[&Spirit::Motion]),
+                muscle: (Spirit::Muscle, ss[&Spirit::Muscle]),
+                kinesis: (Spirit::Kinesis, ss[&Spirit::Kinesis]),
+                glamour: (Spirit::Glamour, ss[&Spirit::Glamour]),
+                balance: (Spirit::Balance, ss[&Spirit::Balance]),
+                the_pulse: (Spirit::ThePulse, ss[&Spirit::ThePulse]),
+            })
+        } else {
+            Err(())
+        }
+    }
 }
 
 impl TryFrom<[Connection; 15]> for SpiritSelection {
     type Error = ();
 
     fn try_from(spirits: [Connection; 15]) -> Result<Self, Self::Error> {
-        if is_valid(&spirits) {
+        if is_valid(spirits.iter()) {
             Ok(spirit_selection_unchecked(&spirits))
         } else {
             Err(())
@@ -159,7 +201,7 @@ impl TryFrom<Vec<Connection>> for SpiritSelection {
     type Error = ();
 
     fn try_from(spirits: Vec<Connection>) -> Result<Self, Self::Error> {
-        if spirits.len() == 15 && is_valid(&spirits) {
+        if spirits.len() == 15 && is_valid(spirits.iter()) {
             Ok(spirit_selection_unchecked(&spirits))
         } else {
             Err(())
@@ -213,13 +255,13 @@ fn spirit_selection_unchecked(spirits: &[Connection]) -> SpiritSelection {
     }
 }
 
-fn is_valid(ss: &[Connection]) -> bool {
+fn is_valid<'a, I: Iterator<Item = &'a Connection>>(ss: I) -> bool {
     let mut mastery_count = 0;
     let mut expertise_count = 0;
     let mut competence_count = 0;
     let mut ineptitude_count = 0;
 
-    for connection in ss {
+    for connection in ss.into_iter() {
         match connection {
             Connection::Ineptitude => ineptitude_count += 1,
             Connection::Competence => competence_count += 1,

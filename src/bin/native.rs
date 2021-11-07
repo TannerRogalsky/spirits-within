@@ -15,7 +15,7 @@ pub fn main() {
     let wb = iced_glutin::glutin::window::WindowBuilder::new()
         .with_title("Editor")
         // .with_fullscreen(Some(glutin::window::Fullscreen::Borderless(None)))
-        .with_inner_size(PhysicalSize::new(1920, 1080))
+        .with_inner_size(PhysicalSize::new(1280, 720))
         .with_resizable(true);
     let window_ctx = iced_glutin::glutin::ContextBuilder::new()
         .with_vsync(true)

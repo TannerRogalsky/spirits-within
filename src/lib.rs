@@ -3,10 +3,11 @@ pub mod web;
 
 use iced_solstice::Renderer;
 use iced_winit::{pick_list, Column, Command, Element, Length, Row, Text};
+use spirits_within::Spirit;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Selected(usize, SelectionOption),
+    Selected(spirits_within::Spirit, SelectionOption),
     Reset,
 }
 
@@ -52,18 +53,175 @@ impl std::fmt::Display for SelectionOption {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
+struct SelectionState {
+    spirit: spirits_within::Spirit,
+    selection: SelectionOption,
+    state: pick_list::State<SelectionOption>,
+}
+
+impl SelectionState {
+    pub fn spirit(spirit: spirits_within::Spirit) -> Self {
+        Self {
+            spirit,
+            selection: Default::default(),
+            state: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct SpiritSelection {
+    the_veil: SelectionState,
+    mirror: SelectionState,
+    the_path: SelectionState,
+    shadows: SelectionState,
+    instinct: SelectionState,
+    reason: SelectionState,
+    whispers: SelectionState,
+    respect: SelectionState,
+    drama: SelectionState,
+    motion: SelectionState,
+    muscle: SelectionState,
+    kinesis: SelectionState,
+    glamour: SelectionState,
+    balance: SelectionState,
+    the_pulse: SelectionState,
+}
+
+impl Default for SpiritSelection {
+    fn default() -> Self {
+        use spirits_within::Spirit::*;
+        Self {
+            the_veil: SelectionState::spirit(TheVeil),
+            mirror: SelectionState::spirit(Mirror),
+            the_path: SelectionState::spirit(ThePath),
+            shadows: SelectionState::spirit(Shadows),
+            instinct: SelectionState::spirit(Instinct),
+            reason: SelectionState::spirit(Reason),
+            whispers: SelectionState::spirit(Whispers),
+            respect: SelectionState::spirit(Respect),
+            drama: SelectionState::spirit(Drama),
+            motion: SelectionState::spirit(Motion),
+            muscle: SelectionState::spirit(Muscle),
+            kinesis: SelectionState::spirit(Kinesis),
+            glamour: SelectionState::spirit(Glamour),
+            balance: SelectionState::spirit(Balance),
+            the_pulse: SelectionState::spirit(ThePulse),
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a SpiritSelection {
+    type Item = &'a SelectionState;
+    type IntoIter = std::array::IntoIter<Self::Item, 15>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        std::array::IntoIter::new([
+            &self.the_veil,
+            &self.mirror,
+            &self.the_path,
+            &self.shadows,
+            &self.instinct,
+            &self.reason,
+            &self.whispers,
+            &self.respect,
+            &self.drama,
+            &self.motion,
+            &self.muscle,
+            &self.kinesis,
+            &self.glamour,
+            &self.balance,
+            &self.the_pulse,
+        ])
+    }
+}
+
+impl<'a> IntoIterator for &'a mut SpiritSelection {
+    type Item = &'a mut SelectionState;
+    type IntoIter = std::array::IntoIter<Self::Item, 15>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        std::array::IntoIter::new([
+            &mut self.the_veil,
+            &mut self.mirror,
+            &mut self.the_path,
+            &mut self.shadows,
+            &mut self.instinct,
+            &mut self.reason,
+            &mut self.whispers,
+            &mut self.respect,
+            &mut self.drama,
+            &mut self.motion,
+            &mut self.muscle,
+            &mut self.kinesis,
+            &mut self.glamour,
+            &mut self.balance,
+            &mut self.the_pulse,
+        ])
+    }
+}
+
+impl std::ops::Index<spirits_within::Spirit> for SpiritSelection {
+    type Output = SelectionState;
+
+    fn index(&self, index: spirits_within::Spirit) -> &Self::Output {
+        use spirits_within::Spirit::*;
+        match index {
+            TheVeil => &self.the_veil,
+            Mirror => &self.mirror,
+            ThePath => &self.the_path,
+            Shadows => &self.shadows,
+            Instinct => &self.instinct,
+            Reason => &self.reason,
+            Whispers => &self.whispers,
+            Respect => &self.respect,
+            Drama => &self.drama,
+            Motion => &self.motion,
+            Muscle => &self.muscle,
+            Kinesis => &self.kinesis,
+            Glamour => &self.glamour,
+            Balance => &self.balance,
+            ThePulse => &self.the_pulse,
+        }
+    }
+}
+
+impl std::ops::IndexMut<spirits_within::Spirit> for SpiritSelection {
+    fn index_mut(&mut self, index: Spirit) -> &mut Self::Output {
+        use spirits_within::Spirit::*;
+        match index {
+            TheVeil => &mut self.the_veil,
+            Mirror => &mut self.mirror,
+            ThePath => &mut self.the_path,
+            Shadows => &mut self.shadows,
+            Instinct => &mut self.instinct,
+            Reason => &mut self.reason,
+            Whispers => &mut self.whispers,
+            Respect => &mut self.respect,
+            Drama => &mut self.drama,
+            Motion => &mut self.motion,
+            Muscle => &mut self.muscle,
+            Kinesis => &mut self.kinesis,
+            Glamour => &mut self.glamour,
+            Balance => &mut self.balance,
+            ThePulse => &mut self.the_pulse,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Application {
     reset_button: iced_winit::button::State,
 
-    selected: [SelectionOption; 15],
-    spirit_connections: [pick_list::State<SelectionOption>; 15],
+    selected: SpiritSelection,
     selection_options: Vec<SelectionOption>,
 }
 
 impl Application {
     pub fn new() -> Self {
         Self {
+            reset_button: Default::default(),
             selection_options: vec![
                 SelectionOption::None,
                 SelectionOption::Mastery,
@@ -71,7 +229,7 @@ impl Application {
                 SelectionOption::Competence,
                 SelectionOption::Ineptitude,
             ],
-            ..Default::default()
+            selected: SpiritSelection::default(),
         }
     }
 
@@ -82,8 +240,8 @@ impl Application {
         let mut expertise = 0;
         let mut competence = 0;
         let mut inept = 0;
-        for selected in self.selected.iter() {
-            match selected {
+        for SelectionState { selection, .. } in &self.selected {
+            match selection {
                 SelectionOption::None => {}
                 SelectionOption::Mastery => mastery += 1,
                 SelectionOption::Expertise => expertise += 1,
@@ -113,11 +271,12 @@ impl iced_winit::Program for Application {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::Selected(index, connection) => {
-                self.selected[index] = connection;
+                let SelectionState { selection, .. } = &mut self.selected[index];
+                *selection = connection;
                 self.update_selection_options();
             }
             Message::Reset => {
-                self.selected = [SelectionOption::None; 15];
+                self.selected = Default::default();
                 self.update_selection_options();
             }
         }
@@ -126,27 +285,6 @@ impl iced_winit::Program for Application {
     }
 
     fn view(&mut self) -> Element<'_, Self::Message, Self::Renderer> {
-        let mut spirits = self
-            .spirit_connections
-            .iter_mut()
-            .zip(spirits_within::Spirit::list())
-            .zip(self.selected.iter().copied())
-            .enumerate()
-            .map(|(index, ((state, spirit), selected))| {
-                Column::new()
-                    .align_items(iced_winit::Alignment::Center)
-                    .width(Length::Fill)
-                    .push(Text::new(format!("{:?}", spirit)))
-                    .push(pick_list::PickList::new(
-                        state,
-                        &self.selection_options,
-                        Some(selected),
-                        move |connection| Message::Selected(index, connection),
-                    ))
-                    .into()
-            })
-            .peekable();
-
         let mut root = Column::new()
             .push(
                 iced_winit::Container::new(
@@ -166,20 +304,64 @@ impl iced_winit::Program for Application {
             .height(Length::Fill)
             .spacing(2);
 
-        while spirits.peek().is_some() {
+        let selection = (&self.selected)
+            .into_iter()
+            .all(|state| state.selection.is_some())
+            .then(|| {
+                spirits_within::SpiritSelection::try_from_iter(
+                    spirits_within::Spirit::LIST.into_iter().map(
+                        |spirit: spirits_within::Spirit| {
+                            (
+                                spirit,
+                                Into::<Option<spirits_within::Connection>>::into(
+                                    self.selected[spirit].selection,
+                                )
+                                .unwrap(),
+                            )
+                        },
+                    ),
+                )
+            });
+
+        let mut rows = std::collections::HashMap::from(
+            spirits_within::Stat::LIST.map(|s| (s, Vec::<Element<_, _>>::new())),
+        );
+        for SelectionState {
+            spirit,
+            selection,
+            state,
+        } in &mut self.selected
+        {
+            let spirit = *spirit;
+            let row = rows.get_mut(&spirit.stat()).unwrap();
+            row.push(
+                Column::new()
+                    .align_items(iced_winit::Alignment::Center)
+                    .width(Length::Fill)
+                    .push(Text::new(format!("{:?}", spirit)))
+                    .push(pick_list::PickList::new(
+                        state,
+                        &self.selection_options,
+                        Some(*selection),
+                        move |connection| Message::Selected(spirit, connection),
+                    ))
+                    .into(),
+            )
+        }
+
+        for stat in spirits_within::Stat::LIST {
+            let row = rows.remove(&stat).unwrap();
             root = root
-                .push(Row::with_children((&mut spirits).take(5).collect()).spacing(2))
+                .push(
+                    Row::new()
+                        .push(Text::new(format!("{:?}", stat)).size(32))
+                        .padding(5),
+                )
+                .push(Row::with_children(row).spacing(2))
                 .width(Length::Fill);
         }
 
-        if self.selected.iter().all(|s| s.is_some()) {
-            let selected = self
-                .selected
-                .iter()
-                .copied()
-                .filter_map(|s| s.into())
-                .collect::<Vec<_>>();
-            let selected = spirits_within::SpiritSelection::try_from(selected);
+        if let Some(selected) = selection {
             match selected {
                 Ok(selected) => {
                     let stats = spirits_within::Stats::new(&selected);
