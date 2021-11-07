@@ -8,22 +8,48 @@ pub fn start() {
     wasm_logger::init(wasm_logger::Config::new(log::Level::Debug));
 }
 
+const MOUSE_DOWN_EVENT: &'static str = "mousedown";
+const MOUSE_MOVE_EVENT: &'static str = "mousemove";
+const MOUSE_UP_EVENT: &'static str = "mouseup";
+
 #[allow(unused)]
 struct Closures {
+    canvas: web_sys::HtmlCanvasElement,
     mouse_down: Closure<dyn FnMut(web_sys::MouseEvent)>,
     mouse_move: Closure<dyn FnMut(web_sys::MouseEvent)>,
     mouse_up: Closure<dyn FnMut(web_sys::MouseEvent)>,
 }
 
+impl Drop for Closures {
+    fn drop(&mut self) {
+        use wasm_bindgen::JsCast;
+        self.canvas
+            .remove_event_listener_with_callback(
+                MOUSE_DOWN_EVENT,
+                self.mouse_down.as_ref().unchecked_ref(),
+            )
+            .unwrap();
+        self.canvas
+            .remove_event_listener_with_callback(
+                MOUSE_MOVE_EVENT,
+                self.mouse_move.as_ref().unchecked_ref(),
+            )
+            .unwrap();
+        self.canvas
+            .remove_event_listener_with_callback(
+                MOUSE_UP_EVENT,
+                self.mouse_up.as_ref().unchecked_ref(),
+            )
+            .unwrap();
+    }
+}
+
 #[wasm_bindgen]
 pub struct Application {
     #[allow(unused)]
-    canvas: web_sys::HtmlCanvasElement,
-    ctx: solstice::Context,
-
-    events: crossbeam_channel::Receiver<iced_winit::event::Event>,
-    #[allow(unused)]
     closures: Closures,
+    ctx: solstice::Context,
+    events: crossbeam_channel::Receiver<iced_winit::event::Event>,
 
     state: program::State<crate::Application>,
     viewport: Viewport,
@@ -90,7 +116,7 @@ impl Application {
                         .unwrap();
                 }) as Box<dyn FnMut(_)>);
                 canvas.add_event_listener_with_callback(
-                    "mousedown",
+                    MOUSE_DOWN_EVENT,
                     closure.as_ref().unchecked_ref(),
                 )?;
                 closure
@@ -109,7 +135,7 @@ impl Application {
                         .unwrap();
                 }) as Box<dyn FnMut(_)>);
                 canvas.add_event_listener_with_callback(
-                    "mousemove",
+                    MOUSE_MOVE_EVENT,
                     closure.as_ref().unchecked_ref(),
                 )?;
                 closure
@@ -125,13 +151,14 @@ impl Application {
                         .unwrap();
                 }) as Box<dyn FnMut(_)>);
                 canvas.add_event_listener_with_callback(
-                    "mouseup",
+                    MOUSE_UP_EVENT,
                     closure.as_ref().unchecked_ref(),
                 )?;
                 closure
             };
 
             Closures {
+                canvas,
                 mouse_down,
                 mouse_move,
                 mouse_up,
@@ -139,7 +166,6 @@ impl Application {
         };
 
         Ok(Self {
-            canvas,
             ctx,
             events,
             closures,
