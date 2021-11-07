@@ -1,13 +1,14 @@
 #[cfg(target_arch = "wasm32")]
 pub mod web;
 
-use iced_solstice::Renderer;
 use iced_winit::{pick_list, Column, Command, Element, Length, Row, Text};
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Selected(spirits_within::Spirit, SelectionOption),
+    SpiritSelected(spirits_within::Spirit, SelectionOption),
+    BasePrerogativeSelected(usize, PrerogativeOption),
     Reset,
+    Randomize,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -211,15 +212,21 @@ impl std::ops::IndexMut<spirits_within::Spirit> for SpiritSelection {
 
 #[derive(Debug, Clone)]
 pub struct Application {
+    rng: rand::rngs::SmallRng,
+    random_button: iced_winit::button::State,
     reset_button: iced_winit::button::State,
 
     selected: SpiritSelection,
     selection_options: Vec<SelectionOption>,
+
+    prerogatives: PrerogativesState,
 }
 
 impl Application {
     pub fn new() -> Self {
         Self {
+            rng: rand::SeedableRng::seed_from_u64(0),
+            random_button: Default::default(),
             reset_button: Default::default(),
             selection_options: vec![
                 SelectionOption::None,
@@ -229,6 +236,7 @@ impl Application {
                 SelectionOption::Ineptitude,
             ],
             selected: SpiritSelection::default(),
+            prerogatives: PrerogativesState::new(),
         }
     }
 
@@ -264,19 +272,32 @@ impl Application {
 }
 
 impl iced_winit::Program for Application {
-    type Renderer = Renderer;
+    type Renderer = iced_solstice::Renderer;
     type Message = Message;
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
-            Message::Selected(index, connection) => {
+            Message::SpiritSelected(index, connection) => {
                 let SelectionState { selection, .. } = &mut self.selected[index];
                 *selection = connection;
                 self.update_selection_options();
             }
+            Message::BasePrerogativeSelected(index, selection) => {
+                self.prerogatives.base_prerogatives[index].0 = selection;
+            }
             Message::Reset => {
                 self.selected = Default::default();
                 self.update_selection_options();
+            }
+            Message::Randomize => {
+                self.selected = Default::default();
+                self.update_selection_options();
+                for spirit in spirits_within::Spirit::LIST {
+                    use rand::Rng;
+                    let index = self.rng.gen_range(1..self.selection_options.len());
+                    self.selected[spirit].selection = self.selection_options[index];
+                    self.update_selection_options();
+                }
             }
         }
 
@@ -287,11 +308,21 @@ impl iced_winit::Program for Application {
         let mut root = Column::new()
             .push(
                 iced_winit::Container::new(
-                    iced_winit::Button::new(&mut self.reset_button, Text::new("Reset"))
-                        .on_press(Message::Reset)
-                        .style(CustomStyle::with_bg(iced_winit::Color::from([
-                            0.9, 0.2, 0.3,
-                        ]))),
+                    iced_winit::Row::new()
+                        .push(
+                            iced_winit::Button::new(
+                                &mut self.random_button,
+                                Text::new("Randomize"),
+                            )
+                            .on_press(Message::Randomize),
+                        )
+                        .push(
+                            iced_winit::Button::new(&mut self.reset_button, Text::new("Reset"))
+                                .on_press(Message::Reset)
+                                .style(CustomStyle::with_bg(iced_winit::Color::from([
+                                    0.9, 0.2, 0.3,
+                                ]))),
+                        ),
                 )
                 .align_x(iced_winit::alignment::Horizontal::Right)
                 .width(Length::Fill)
@@ -375,7 +406,7 @@ impl iced_winit::Program for Application {
                         state,
                         &self.selection_options,
                         Some(selection),
-                        move |connection| Message::Selected(spirit, connection),
+                        move |connection| Message::SpiritSelected(spirit, connection),
                     ))
                     .into(),
             )
@@ -398,6 +429,7 @@ impl iced_winit::Program for Application {
                     let stats = spirits_within::BaseStats::new(&selected);
                     let text = format!("{:#?}", stats);
                     root = root.push(Text::new(text));
+                    root = root.push(self.prerogatives.view(stats));
                 }
                 Err(err) => {
                     log::error!("OH GOD OH NO: {:?}", err);
@@ -406,6 +438,88 @@ impl iced_winit::Program for Application {
         }
 
         root.into()
+    }
+}
+
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq)]
+pub struct PrerogativeOption(Option<spirits_within::Prerogative>);
+
+impl PrerogativeOption {
+    const LIST: [PrerogativeOption; 4] = [
+        Self(None),
+        Self(Some(spirits_within::Prerogative::Conviction)),
+        Self(Some(spirits_within::Prerogative::Education)),
+        Self(Some(spirits_within::Prerogative::Vocation)),
+    ];
+}
+
+impl std::fmt::Display for PrerogativeOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            None => write!(f, ""),
+            Some(p) => write!(f, "{}", p),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct PrerogativesState {
+    base_prerogatives: [(PrerogativeOption, pick_list::State<PrerogativeOption>); 4],
+}
+
+impl PrerogativesState {
+    pub fn new() -> Self {
+        Self {
+            base_prerogatives: [
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            ],
+        }
+    }
+
+    fn view(
+        &mut self,
+        base_stats: spirits_within::BaseStats,
+    ) -> Element<'_, Message, <Application as iced_winit::Program>::Renderer> {
+        let stats = if self
+            .base_prerogatives
+            .iter()
+            .all(|(PrerogativeOption(p), _)| p.is_some())
+        {
+            let prerogatives = self
+                .base_prerogatives
+                .clone()
+                .map(|(PrerogativeOption(p), _)| p.unwrap());
+            let pb = spirits_within::PrerogativesAndBurdens::new(prerogatives);
+            let stats = base_stats.with_prerogatives_and_burdens(&pb);
+            match stats {
+                Ok(stats) => Some(Element::from(Text::new(format!("{:#?}", stats)))),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+
+        let base_prerogs =
+            self.base_prerogatives
+                .iter_mut()
+                .enumerate()
+                .map(|(index, (selection, state))| {
+                    pick_list::PickList::new(
+                        state,
+                        &PrerogativeOption::LIST[..],
+                        Some(*selection),
+                        move |prerogative| Message::BasePrerogativeSelected(index, prerogative),
+                    )
+                    .into()
+                });
+        let children = match stats {
+            Some(stats) => base_prerogs.chain(std::iter::once(stats)).collect(),
+            None => base_prerogs.collect(),
+        };
+        Row::with_children(children).width(Length::Fill).into()
     }
 }
 

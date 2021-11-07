@@ -24,7 +24,7 @@ opt-level = "z"     # optimize for size
 
 [dependencies]
 spirits-within = { path = "./spirits-within" }
-
+rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 eyre = "0.6"
 log = "0.4"
 solstice = "0.1"
