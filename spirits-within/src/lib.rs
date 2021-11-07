@@ -279,14 +279,13 @@ fn is_valid<'a, I: Iterator<Item = &'a Connection>>(ss: I) -> bool {
 
 #[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Stats {
+pub struct BaseStats {
     discipline: u32,
     knowledge: u32,
     proficiency: u32,
 }
 
-#[wasm_bindgen]
-impl Stats {
+impl BaseStats {
     pub fn new(ss: &SpiritSelection) -> Self {
         let mut discipline = 1;
         let mut knowledge = 5;
@@ -316,6 +315,113 @@ impl Stats {
             proficiency,
         }
     }
+
+    pub fn with_prerogatives_and_burdens(
+        mut self,
+        pb: &PrerogativesAndBurdens,
+    ) -> Result<Stats, ()> {
+        for prerogative in pb.prerogatives.iter() {
+            match prerogative {
+                Prerogative::Conviction => {
+                    if self.discipline < 13 {
+                        self.discipline += 3;
+                    } else {
+                        return Err(());
+                    }
+                }
+                Prerogative::Education => {
+                    if self.knowledge < 18 {
+                        self.knowledge += 3;
+                    } else {
+                        return Err(());
+                    }
+                }
+                Prerogative::Vocation => {
+                    if self.proficiency < 18 {
+                        self.proficiency += 3;
+                    } else {
+                        return Err(());
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(Stats { base: self })
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Stats {
+    base: BaseStats,
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct PrerogativesAndBurdens {
+    prerogatives: Vec<Prerogative>,
+    burdens: Vec<Burden>,
+}
+
+impl PrerogativesAndBurdens {
+    pub fn new(prerogatives: [Prerogative; 4]) -> Self {
+        Self {
+            prerogatives: prerogatives.into(),
+            burdens: Vec::with_capacity(4),
+        }
+    }
+
+    pub fn add_burden(&mut self, burden: Burden, prerogative: Prerogative) -> bool {
+        if self.burdens.len() < 4 {
+            self.burdens.push(burden);
+            self.prerogatives.push(prerogative);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Burden {
+    Addiction,
+    BadReputation,
+    Poverty,
+    Rookie,
+    Debt,
+    Devotion,
+    Fame,
+    Hauntings,
+    Illness,
+    Impairment,
+    LexTalionis,
+    Phobia,
+    Wanted,
+    Youth,
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Prerogative {
+    Conviction,
+    Education,
+    Vocation,
+    Certification,
+    Promotion,
+    Wealth,
+    DevilKiller,
+    Endurance,
+    Family,
+    HealingHands,
+    Liaison,
+    Organization,
+    AstralProjection,
+    Premonitions,
+    Psychokinesis,
+    Psychometry,
+    Relic,
+    Witchcraft,
 }
 
 #[cfg(test)]
@@ -342,10 +448,10 @@ mod tests {
             Connection::Ineptitude,
         ])
         .unwrap();
-        let stats = Stats::new(&ss);
+        let stats = BaseStats::new(&ss);
         assert_eq!(
             stats,
-            Stats {
+            BaseStats {
                 discipline: 10,
                 knowledge: 11,
                 proficiency: 9

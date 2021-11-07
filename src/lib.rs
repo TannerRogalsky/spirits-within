@@ -395,7 +395,7 @@ impl iced_winit::Program for Application {
         if let Some(selected) = selection {
             match selected {
                 Ok(selected) => {
-                    let stats = spirits_within::Stats::new(&selected);
+                    let stats = spirits_within::BaseStats::new(&selected);
                     let text = format!("{:#?}", stats);
                     root = root.push(Text::new(text));
                 }
