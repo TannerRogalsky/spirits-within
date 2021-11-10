@@ -223,9 +223,9 @@ pub struct Application {
 }
 
 impl Application {
-    pub fn new() -> Self {
+    pub fn new(seed: u64) -> Self {
         Self {
-            rng: rand::SeedableRng::seed_from_u64(0),
+            rng: rand::SeedableRng::seed_from_u64(seed),
             random_button: Default::default(),
             reset_button: Default::default(),
             selection_options: vec![
@@ -290,13 +290,19 @@ impl iced_winit::Program for Application {
                 self.update_selection_options();
             }
             Message::Randomize => {
+                use rand::Rng;
                 self.selected = Default::default();
                 self.update_selection_options();
                 for spirit in spirits_within::Spirit::LIST {
-                    use rand::Rng;
                     let index = self.rng.gen_range(1..self.selection_options.len());
                     self.selected[spirit].selection = self.selection_options[index];
                     self.update_selection_options();
+                }
+                for (prerogative, _) in self.prerogatives.base_prerogatives.iter_mut() {
+                    let index = self
+                        .rng
+                        .gen_range(0..spirits_within::Prerogative::LIST.len());
+                    *prerogative = spirits_within::Prerogative::LIST[index].into();
                 }
             }
         }
@@ -445,12 +451,15 @@ impl iced_winit::Program for Application {
 pub struct PrerogativeOption(Option<spirits_within::Prerogative>);
 
 impl PrerogativeOption {
-    const LIST: [PrerogativeOption; 4] = [
-        Self(None),
-        Self(Some(spirits_within::Prerogative::Conviction)),
-        Self(Some(spirits_within::Prerogative::Education)),
-        Self(Some(spirits_within::Prerogative::Vocation)),
-    ];
+    pub fn none() -> Self {
+        Self(None)
+    }
+}
+
+impl From<spirits_within::Prerogative> for PrerogativeOption {
+    fn from(v: spirits_within::Prerogative) -> Self {
+        Self(Some(v))
+    }
 }
 
 impl std::fmt::Display for PrerogativeOption {
@@ -465,6 +474,7 @@ impl std::fmt::Display for PrerogativeOption {
 #[derive(Debug, Clone)]
 struct PrerogativesState {
     base_prerogatives: [(PrerogativeOption, pick_list::State<PrerogativeOption>); 4],
+    prerogative_options: Vec<PrerogativeOption>,
 }
 
 impl PrerogativesState {
@@ -476,6 +486,39 @@ impl PrerogativesState {
                 Default::default(),
                 Default::default(),
             ],
+            prerogative_options: std::iter::once(PrerogativeOption::none())
+                .chain(spirits_within::Prerogative::LIST.map(|p| p.into()))
+                .collect(),
+        }
+    }
+
+    fn update_options(&mut self, mut stats: spirits_within::BaseStats) {
+        use spirits_within::{Prerogative, Stats};
+        self.prerogative_options.clear();
+        self.prerogative_options.push(PrerogativeOption::none());
+
+        for (prerog, _) in self.base_prerogatives.iter() {
+            match prerog.0 {
+                None => {}
+                Some(prerog) => match prerog {
+                    Prerogative::Conviction => stats.discipline += 3,
+                    Prerogative::Education => stats.knowledge += 3,
+                    Prerogative::Vocation => stats.proficiency += 3,
+                    _ => {}
+                },
+            }
+        }
+
+        for prerog in spirits_within::Prerogative::LIST {
+            let should_add = match prerog {
+                Prerogative::Conviction => stats.discipline < Stats::MAX_DISCIPLINE,
+                Prerogative::Education => stats.knowledge < Stats::MAX_KNOWLEDGE,
+                Prerogative::Vocation => stats.proficiency < Stats::MAX_PROFICIENCY,
+                _ => true,
+            };
+            if should_add {
+                self.prerogative_options.push(prerog.into());
+            }
         }
     }
 
@@ -483,6 +526,8 @@ impl PrerogativesState {
         &mut self,
         base_stats: spirits_within::BaseStats,
     ) -> Element<'_, Message, <Application as iced_winit::Program>::Renderer> {
+        self.update_options(base_stats);
+
         let stats = if self
             .base_prerogatives
             .iter()
@@ -495,7 +540,7 @@ impl PrerogativesState {
             let pb = spirits_within::PrerogativesAndBurdens::new(prerogatives);
             let stats = base_stats.with_prerogatives_and_burdens(&pb);
             match stats {
-                Ok(stats) => Some(Element::from(Text::new(format!("{:#?}", stats)))),
+                Ok(stats) => Some(Text::new(format!("{:#?}", stats))),
                 Err(_) => None,
             }
         } else {
@@ -509,17 +554,32 @@ impl PrerogativesState {
                 .map(|(index, (selection, state))| {
                     pick_list::PickList::new(
                         state,
-                        &PrerogativeOption::LIST[..],
+                        &self.prerogative_options,
                         Some(*selection),
                         move |prerogative| Message::BasePrerogativeSelected(index, prerogative),
                     )
                     .into()
                 });
-        let children = match stats {
-            Some(stats) => base_prerogs.chain(std::iter::once(stats)).collect(),
-            None => base_prerogs.collect(),
-        };
-        Row::with_children(children).width(Length::Fill).into()
+        let base_prerogs = Row::with_children(base_prerogs.collect())
+            .width(Length::Fill)
+            .align_items(iced_winit::Alignment::Center)
+            .into();
+        let base_prerogs = Column::with_children(vec![
+            Row::new()
+                .push(Text::new("Prerogatives And Burdens").size(32))
+                .padding(5)
+                .into(),
+            base_prerogs,
+        ])
+        .width(Length::Fill);
+        match stats {
+            Some(stats) => Column::new()
+                .push(base_prerogs)
+                .push(stats)
+                .width(Length::Fill)
+                .into(),
+            None => base_prerogs.into(),
+        }
     }
 }
 

@@ -11,6 +11,7 @@ pub fn start() {
 const MOUSE_DOWN_EVENT: &'static str = "mousedown";
 const MOUSE_MOVE_EVENT: &'static str = "mousemove";
 const MOUSE_UP_EVENT: &'static str = "mouseup";
+const MOUSE_WHEEL_EVENT: &'static str = "wheel";
 
 #[allow(unused)]
 struct Closures {
@@ -18,6 +19,7 @@ struct Closures {
     mouse_down: Closure<dyn FnMut(web_sys::MouseEvent)>,
     mouse_move: Closure<dyn FnMut(web_sys::MouseEvent)>,
     mouse_up: Closure<dyn FnMut(web_sys::MouseEvent)>,
+    mouse_wheel: Closure<dyn FnMut(web_sys::WheelEvent)>,
 }
 
 impl Drop for Closures {
@@ -83,7 +85,12 @@ impl Application {
         let cursor_position = PhysicalPosition::new(-1.0, -1.0);
         // let modifiers = ModifiersState::default();
 
-        let controls = crate::Application::new();
+        let controls = crate::Application::new({
+            let rand: web_sys::Crypto = web_sys::window().unwrap().crypto()?;
+            let mut seed = [0; 8];
+            rand.get_random_values_with_u8_array(&mut seed)?;
+            u64::from_ne_bytes(seed)
+        });
 
         let state = program::State::new(
             controls,
@@ -156,12 +163,35 @@ impl Application {
                 )?;
                 closure
             };
+            let mouse_wheel = {
+                let events_sx = events_sx.clone();
+                let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
+                    log::trace!("mouse wheel");
+                    let x = event.delta_x() as _;
+                    let y = -event.delta_y() as _;
+                    let delta = match event.delta_mode() {
+                        web_sys::WheelEvent::DOM_DELTA_PIXEL => mouse::ScrollDelta::Pixels { x, y },
+                        web_sys::WheelEvent::DOM_DELTA_LINE => mouse::ScrollDelta::Lines { x, y },
+                        web_sys::WheelEvent::DOM_DELTA_PAGE => return,
+                        _ => return,
+                    };
+                    events_sx
+                        .send(Event::Mouse(mouse::Event::WheelScrolled { delta }))
+                        .unwrap();
+                }) as Box<dyn FnMut(_)>);
+                canvas.add_event_listener_with_callback(
+                    MOUSE_WHEEL_EVENT,
+                    closure.as_ref().unchecked_ref(),
+                )?;
+                closure
+            };
 
             Closures {
                 canvas,
                 mouse_down,
                 mouse_move,
                 mouse_up,
+                mouse_wheel,
             }
         };
 

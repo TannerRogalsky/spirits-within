@@ -280,9 +280,9 @@ fn is_valid<'a, I: Iterator<Item = &'a Connection>>(ss: I) -> bool {
 #[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct BaseStats {
-    discipline: u32,
-    knowledge: u32,
-    proficiency: u32,
+    pub discipline: u32,
+    pub knowledge: u32,
+    pub proficiency: u32,
 }
 
 impl BaseStats {
@@ -323,21 +323,21 @@ impl BaseStats {
         for prerogative in pb.prerogatives.iter() {
             match prerogative {
                 Prerogative::Conviction => {
-                    if self.discipline < 13 {
+                    if self.discipline < Stats::MAX_DISCIPLINE {
                         self.discipline += 3;
                     } else {
                         return Err(());
                     }
                 }
                 Prerogative::Education => {
-                    if self.knowledge < 18 {
+                    if self.knowledge < Stats::MAX_KNOWLEDGE {
                         self.knowledge += 3;
                     } else {
                         return Err(());
                     }
                 }
                 Prerogative::Vocation => {
-                    if self.proficiency < 18 {
+                    if self.proficiency < Stats::MAX_PROFICIENCY {
                         self.proficiency += 3;
                     } else {
                         return Err(());
@@ -354,6 +354,12 @@ impl BaseStats {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Stats {
     base: BaseStats,
+}
+
+impl Stats {
+    pub const MAX_DISCIPLINE: u32 = 13;
+    pub const MAX_KNOWLEDGE: u32 = 18;
+    pub const MAX_PROFICIENCY: u32 = 18;
 }
 
 #[wasm_bindgen]
@@ -401,6 +407,25 @@ pub enum Burden {
     Youth,
 }
 
+impl Burden {
+    pub const LIST: [Self; 14] = [
+        Self::Addiction,
+        Self::BadReputation,
+        Self::Poverty,
+        Self::Rookie,
+        Self::Debt,
+        Self::Devotion,
+        Self::Fame,
+        Self::Hauntings,
+        Self::Illness,
+        Self::Impairment,
+        Self::LexTalionis,
+        Self::Phobia,
+        Self::Wanted,
+        Self::Youth,
+    ];
+}
+
 #[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Prerogative {
@@ -422,6 +447,29 @@ pub enum Prerogative {
     Psychometry,
     Relic,
     Witchcraft,
+}
+
+impl Prerogative {
+    pub const LIST: [Self; 18] = [
+        Self::Conviction,
+        Self::Education,
+        Self::Vocation,
+        Self::Certification,
+        Self::Promotion,
+        Self::Wealth,
+        Self::DevilKiller,
+        Self::Endurance,
+        Self::Family,
+        Self::HealingHands,
+        Self::Liaison,
+        Self::Organization,
+        Self::AstralProjection,
+        Self::Premonitions,
+        Self::Psychokinesis,
+        Self::Psychometry,
+        Self::Relic,
+        Self::Witchcraft,
+    ];
 }
 
 impl std::fmt::Display for Prerogative {
