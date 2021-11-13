@@ -51,6 +51,7 @@ pub struct Application {
     #[allow(unused)]
     closures: Closures,
     ctx: solstice::Context,
+    d2: renderer::Renderer,
     events: crossbeam_channel::Receiver<iced_winit::event::Event>,
 
     state: program::State<crate::Application>,
@@ -77,6 +78,14 @@ impl Application {
             iced_winit::winit::dpi::PhysicalSize::new(canvas.width(), canvas.height());
         let viewport =
             Viewport::with_physical_size(Size::new(physical_size.width, physical_size.height), 1.);
+        let d2 = renderer::Renderer {
+            d2: renderer::Graphics::new(
+                &mut ctx,
+                physical_size.width as _,
+                physical_size.height as _,
+            )
+            .unwrap(),
+        };
 
         let mut debug = Debug::new();
         let mut renderer = Renderer::new(Backend::new(&mut ctx, Settings::default()));
@@ -197,6 +206,7 @@ impl Application {
 
         Ok(Self {
             ctx,
+            d2,
             events,
             closures,
             state,
@@ -208,7 +218,7 @@ impl Application {
         })
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, t: f32) {
         for event in self.events.try_iter() {
             match &event {
                 iced_winit::Event::Mouse(iced_winit::mouse::Event::CursorMoved { position }) => {
@@ -248,6 +258,10 @@ impl Application {
                 ..Default::default()
             },
         );
+
+        const DURATION: f32 = 10.;
+        let t = (t / 1000.) % DURATION / DURATION;
+        self.d2.draw(&mut self.ctx, t);
 
         let _mouse_interaction = self.renderer.backend_mut().draw(
             &mut self.ctx,

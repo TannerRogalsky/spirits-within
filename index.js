@@ -10,7 +10,7 @@ document.body.appendChild(canvas);
 const app = new Application(canvas);
 
 const loop = () => {
-	app.update();
+	app.update(performance.now());
 	requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

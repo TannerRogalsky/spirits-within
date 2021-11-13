@@ -676,23 +676,22 @@ impl PrerogativesState {
 
         let optional_prerogs = if stats.is_some() {
             let buttons = {
-                let add = Button::new(&mut self.add_button, Text::new("+")).width(Length::Fill);
+                let add_text = Text::new("+");
+                let add = Button::new(&mut self.add_button, add_text).width(Length::Fill);
                 let add = if self.optional_burdens.len() < 4 {
                     add.on_press(Message::AddOptionalBurden)
                 } else {
                     add
-                }
-                .into();
-                let remove =
-                    Button::new(&mut self.remove_button, Text::new("-")).width(Length::Fill);
+                };
+                let remove_text = Text::new("-");
+                let remove = Button::new(&mut self.remove_button, remove_text).width(Length::Fill);
                 let remove = if self.optional_burdens.is_empty() {
                     remove
                 } else {
                     remove.on_press(Message::RemoveOptionalBurden)
-                }
-                .into();
-                Column::with_children(vec![add, remove])
-                    .width(Length::FillPortion(1))
+                };
+                Column::with_children(vec![add.into(), remove.into()])
+                    .width(Length::Fill)
                     .into()
             };
 

@@ -32,7 +32,7 @@ pub fn main() {
         // gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
 
         // Disable multisampling by default
-        gl.disable(glow::MULTISAMPLE);
+        // gl.disable(glow::MULTISAMPLE);
         gl
     };
     let mut gl = solstice::Context::new(gl);
@@ -48,14 +48,14 @@ pub fn main() {
         viewport.physical_size().width as _,
         viewport.physical_size().height as _,
     );
-    // let mut d2 = solstice_2d::Graphics::new(
-    //     &mut gl,
-    //     viewport.physical_size().width as _,
-    //     viewport.physical_size().height as _,
-    // )
-    //     .unwrap();
-
-    // let mut compositor = iced_solstice::window::Compositor::new()
+    let mut gfx = renderer::Renderer {
+        d2: renderer::Graphics::new(
+            &mut gl,
+            viewport.physical_size().width as _,
+            viewport.physical_size().height as _,
+        )
+        .unwrap(),
+    };
 
     let mut cursor_position = PhysicalPosition::new(-1.0, -1.0);
     let mut modifiers = ModifiersState::default();
@@ -77,6 +77,8 @@ pub fn main() {
         &mut renderer,
         &mut debug,
     );
+
+    let epoch = std::time::Instant::now();
 
     // Run event loop
     event_loop.run(move |event, _, control_flow| {
@@ -146,7 +148,7 @@ pub fn main() {
                 if resized {
                     let size = window_ctx.window().inner_size();
                     gl.set_viewport(0, 0, size.width as i32, size.height as i32);
-                    // d2.set_width_height(size.width as _, size.height as _);
+                    gfx.d2.set_width_height(size.width as _, size.height as _);
 
                     resized = false;
                 }
@@ -167,6 +169,12 @@ pub fn main() {
                     },
                 );
 
+                {
+                    let now = std::time::Instant::now();
+                    const DURATION: f32 = 10.;
+                    let t = now.duration_since(epoch).as_secs_f32() % DURATION / DURATION;
+                    gfx.draw(&mut gl, t);
+                }
                 // game_renderer.render(
                 //     &mut gl,
                 //     state.program().context.state(),
