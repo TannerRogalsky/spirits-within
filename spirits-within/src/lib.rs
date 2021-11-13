@@ -426,6 +426,12 @@ impl Burden {
     ];
 }
 
+impl std::fmt::Display for Burden {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[wasm_bindgen]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Prerogative {

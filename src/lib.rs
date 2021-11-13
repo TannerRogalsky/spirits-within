@@ -1,12 +1,16 @@
 #[cfg(target_arch = "wasm32")]
 pub mod web;
 
-use iced_winit::{pick_list, Column, Command, Element, Length, Row, Text};
+use iced_winit::{pick_list, Button, Column, Command, Element, Length, Row, Text};
 
 #[derive(Debug, Clone)]
 pub enum Message {
     SpiritSelected(spirits_within::Spirit, SelectionOption),
     BasePrerogativeSelected(usize, PrerogativeOption),
+    OptionalBurdenSelected(usize, BurdenOption),
+    OptionalPrerogativeSelected(usize, PrerogativeOption),
+    AddOptionalBurden,
+    RemoveOptionalBurden,
     Reset,
     Randomize,
 }
@@ -304,6 +308,41 @@ impl iced_winit::Program for Application {
                         .gen_range(0..spirits_within::Prerogative::LIST.len());
                     *prerogative = spirits_within::Prerogative::LIST[index].into();
                 }
+                self.prerogatives.optional_burdens.clear();
+                for _index in 0..4 {
+                    let burden_index = self.rng.gen_range(0..spirits_within::Burden::LIST.len());
+                    let prerog_index = self
+                        .rng
+                        .gen_range(0..spirits_within::Prerogative::LIST.len());
+                    self.prerogatives.optional_burdens.push(OptionalBurden {
+                        burden: spirits_within::Burden::LIST[burden_index].into(),
+                        burden_state: Default::default(),
+                        prerogative: spirits_within::Prerogative::LIST[prerog_index].into(),
+                        prerogative_state: Default::default(),
+                    })
+                }
+            }
+            Message::AddOptionalBurden => {
+                self.prerogatives.optional_burdens.push(Default::default());
+            }
+            Message::RemoveOptionalBurden => {
+                self.prerogatives.optional_burdens.pop();
+            }
+            Message::OptionalBurdenSelected(index, burden) => {
+                self.prerogatives
+                    .optional_burdens
+                    .get_mut(index)
+                    .map(|state| {
+                        state.burden = burden;
+                    });
+            }
+            Message::OptionalPrerogativeSelected(index, prerogative) => {
+                self.prerogatives
+                    .optional_burdens
+                    .get_mut(index)
+                    .map(|state| {
+                        state.prerogative = prerogative;
+                    });
             }
         }
 
@@ -425,8 +464,7 @@ impl iced_winit::Program for Application {
                         .push(Text::new(format!("{:?}", stat)).size(32))
                         .padding(5),
                 )
-                .push(Row::with_children(row).spacing(2))
-                .width(Length::Fill);
+                .push(Row::with_children(row).spacing(2));
         }
 
         if let Some(selected) = selection {
@@ -435,7 +473,7 @@ impl iced_winit::Program for Application {
                     let stats = spirits_within::BaseStats::new(&selected);
                     let text = format!("{:#?}", stats);
                     root = root.push(Text::new(text));
-                    root = root.push(self.prerogatives.view(stats));
+                    root = root.push(self.prerogatives.view(stats)).width(Length::Fill);
                 }
                 Err(err) => {
                     log::error!("OH GOD OH NO: {:?}", err);
@@ -471,10 +509,64 @@ impl std::fmt::Display for PrerogativeOption {
     }
 }
 
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq)]
+pub struct BurdenOption(Option<spirits_within::Burden>);
+
+impl BurdenOption {
+    pub fn none() -> Self {
+        Self(None)
+    }
+}
+
+impl From<spirits_within::Burden> for BurdenOption {
+    fn from(v: spirits_within::Burden) -> Self {
+        Self(Some(v))
+    }
+}
+
+impl std::fmt::Display for BurdenOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            None => write!(f, ""),
+            Some(p) => write!(f, "{}", p),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct OptionalBurden {
+    burden: BurdenOption,
+    burden_state: pick_list::State<BurdenOption>,
+    prerogative: PrerogativeOption,
+    prerogative_state: pick_list::State<PrerogativeOption>,
+}
+
+impl Default for OptionalBurden {
+    fn default() -> Self {
+        Self {
+            burden: BurdenOption::none(),
+            burden_state: Default::default(),
+            prerogative: Default::default(),
+            prerogative_state: Default::default(),
+        }
+    }
+}
+
+impl OptionalBurden {
+    fn zip(&self) -> Option<(spirits_within::Burden, spirits_within::Prerogative)> {
+        self.burden.0.zip(self.prerogative.0)
+    }
+}
+
 #[derive(Debug, Clone)]
 struct PrerogativesState {
     base_prerogatives: [(PrerogativeOption, pick_list::State<PrerogativeOption>); 4],
     prerogative_options: Vec<PrerogativeOption>,
+
+    burden_options: Vec<BurdenOption>,
+    optional_burdens: Vec<OptionalBurden>,
+    add_button: iced_winit::button::State,
+    remove_button: iced_winit::button::State,
 }
 
 impl PrerogativesState {
@@ -487,8 +579,14 @@ impl PrerogativesState {
                 Default::default(),
             ],
             prerogative_options: std::iter::once(PrerogativeOption::none())
-                .chain(spirits_within::Prerogative::LIST.map(|p| p.into()))
+                .chain(spirits_within::Prerogative::LIST.map(Into::into))
                 .collect(),
+            burden_options: std::iter::once(BurdenOption::none())
+                .chain(spirits_within::Burden::LIST.map(Into::into))
+                .collect(),
+            optional_burdens: vec![],
+            add_button: Default::default(),
+            remove_button: Default::default(),
         }
     }
 
@@ -497,8 +595,13 @@ impl PrerogativesState {
         self.prerogative_options.clear();
         self.prerogative_options.push(PrerogativeOption::none());
 
-        for (prerog, _) in self.base_prerogatives.iter() {
-            match prerog.0 {
+        let iter = self
+            .base_prerogatives
+            .iter()
+            .map(|(prerog, _)| prerog.0)
+            .chain(self.optional_burdens.iter().map(|b| b.prerogative.0));
+        for prerog in iter {
+            match prerog {
                 None => {}
                 Some(prerog) => match prerog {
                     Prerogative::Conviction => stats.discipline += 3,
@@ -537,7 +640,12 @@ impl PrerogativesState {
                 .base_prerogatives
                 .clone()
                 .map(|(PrerogativeOption(p), _)| p.unwrap());
-            let pb = spirits_within::PrerogativesAndBurdens::new(prerogatives);
+            let mut pb = spirits_within::PrerogativesAndBurdens::new(prerogatives);
+            for optional_burden in self.optional_burdens.iter() {
+                if let Some((b, p)) = optional_burden.zip() {
+                    pb.add_burden(b, p);
+                }
+            }
             let stats = base_stats.with_prerogatives_and_burdens(&pb);
             match stats {
                 Ok(stats) => Some(Text::new(format!("{:#?}", stats))),
@@ -547,38 +655,106 @@ impl PrerogativesState {
             None
         };
 
-        let base_prerogs =
+        let base_prerogs = Row::with_children(
             self.base_prerogatives
                 .iter_mut()
                 .enumerate()
                 .map(|(index, (selection, state))| {
-                    pick_list::PickList::new(
+                    iced_winit::Container::new(pick_list::PickList::new(
                         state,
                         &self.prerogative_options,
                         Some(*selection),
                         move |prerogative| Message::BasePrerogativeSelected(index, prerogative),
-                    )
+                    ))
+                    .align_y(iced_winit::alignment::Vertical::Top)
+                    .width(Length::Fill)
                     .into()
-                });
-        let base_prerogs = Row::with_children(base_prerogs.collect())
-            .width(Length::Fill)
-            .align_items(iced_winit::Alignment::Center)
-            .into();
-        let base_prerogs = Column::with_children(vec![
+                })
+                .collect(),
+        )
+        .width(Length::Fill);
+
+        let optional_prerogs = if stats.is_some() {
+            let buttons = {
+                let add = Button::new(&mut self.add_button, Text::new("+")).width(Length::Fill);
+                let add = if self.optional_burdens.len() < 4 {
+                    add.on_press(Message::AddOptionalBurden)
+                } else {
+                    add
+                }
+                .into();
+                let remove =
+                    Button::new(&mut self.remove_button, Text::new("-")).width(Length::Fill);
+                let remove = if self.optional_burdens.is_empty() {
+                    remove
+                } else {
+                    remove.on_press(Message::RemoveOptionalBurden)
+                }
+                .into();
+                Column::with_children(vec![add, remove])
+                    .width(Length::FillPortion(1))
+                    .into()
+            };
+
+            let mut optionals = self
+                .optional_burdens
+                .iter_mut()
+                .enumerate()
+                .map(|(index, optional_burden)| {
+                    let burden_picker = pick_list::PickList::new(
+                        &mut optional_burden.burden_state,
+                        &self.burden_options,
+                        Some(optional_burden.burden),
+                        move |burden| Message::OptionalBurdenSelected(index, burden),
+                    )
+                    .width(Length::Fill)
+                    .into();
+                    let prerogative_picker = pick_list::PickList::new(
+                        &mut optional_burden.prerogative_state,
+                        &self.prerogative_options,
+                        Some(optional_burden.prerogative),
+                        move |prerog| Message::OptionalPrerogativeSelected(index, prerog),
+                    )
+                    .width(Length::Fill)
+                    .into();
+                    Column::with_children(vec![burden_picker, prerogative_picker])
+                        .width(Length::Fill)
+                        .into()
+                })
+                .collect::<Vec<_>>();
+            while optionals.len() < 4 {
+                optionals.push(iced_winit::Space::new(Length::Fill, Length::Shrink).into());
+            }
+            let optionals = Row::with_children(optionals)
+                .spacing(2)
+                .width(Length::FillPortion(20))
+                .into();
+
+            Row::with_children(vec![buttons, optionals])
+                .spacing(2)
+                .width(Length::Fill)
+                .into()
+        } else {
+            iced_winit::Space::new(Length::Fill, Length::Shrink).into()
+        };
+
+        let titled_prerogs = Column::with_children(vec![
             Row::new()
                 .push(Text::new("Prerogatives And Burdens").size(32))
                 .padding(5)
                 .into(),
-            base_prerogs,
+            Row::with_children(vec![base_prerogs.into(), optional_prerogs])
+                .width(Length::Fill)
+                .into(),
         ])
         .width(Length::Fill);
         match stats {
             Some(stats) => Column::new()
-                .push(base_prerogs)
+                .push(titled_prerogs)
                 .push(stats)
                 .width(Length::Fill)
                 .into(),
-            None => base_prerogs.into(),
+            None => titled_prerogs.into(),
         }
     }
 }
