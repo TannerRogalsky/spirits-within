@@ -89,7 +89,7 @@ impl Application {
 
         let mut debug = Debug::new();
         let mut renderer = Renderer::new(Backend::new(&mut ctx, Settings::default()));
-        let clipboard = Clipboard::new();
+        let mut clipboard = Clipboard::unconnected();
 
         let cursor_position = PhysicalPosition::new(-1.0, -1.0);
         // let modifiers = ModifiersState::default();
@@ -101,11 +101,14 @@ impl Application {
             u64::from_ne_bytes(seed)
         });
 
-        let state = program::State::new(
-            controls,
+        let mut state =
+            program::State::new(controls, viewport.logical_size(), &mut renderer, &mut debug);
+        // this first update guarantees that the UI shows on initial load
+        let _ = state.update(
             viewport.logical_size(),
             conversion::cursor_position(cursor_position, viewport.scale_factor()),
             &mut renderer,
+            &mut clipboard,
             &mut debug,
         );
 
@@ -263,11 +266,13 @@ impl Application {
         let t = (t / 1000.) % DURATION / DURATION;
         self.d2.draw(&mut self.ctx, t);
 
-        let _mouse_interaction = self.renderer.backend_mut().draw(
-            &mut self.ctx,
-            &self.viewport,
-            self.state.primitive(),
-            &self.debug.overlay(),
-        );
+        self.renderer.with_primitives(|backend, primitives| {
+            backend.present(
+                &mut self.ctx,
+                primitives,
+                &self.viewport,
+                &self.debug.overlay(),
+            );
+        });
     }
 }

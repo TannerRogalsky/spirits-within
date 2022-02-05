@@ -10,7 +10,9 @@ module.exports = {
     filename: '[name].js',
   },
   plugins: [
-    new HtmlWebpackPlugin()
+    new HtmlWebpackPlugin({
+        title: "Spirits Within"
+    })
   ],
   experiments: {
     asyncWebAssembly: true,

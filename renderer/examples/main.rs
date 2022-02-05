@@ -14,7 +14,7 @@ fn main() {
         .unwrap();
     let window_ctx = unsafe { window_ctx.make_current() }.unwrap();
     let ctx = unsafe {
-        use solstice_2d::solstice::glow::{self, HasContext};
+        // use solstice_2d::solstice::glow::{self, HasContext};
         let gl = solstice_2d::solstice::glow::Context::from_loader_function(|addr| {
             window_ctx.get_proc_address(addr)
         });

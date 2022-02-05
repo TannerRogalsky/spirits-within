@@ -1,7 +1,10 @@
 #[cfg(target_arch = "wasm32")]
 pub mod web;
 
-use iced_winit::{pick_list, Button, Column, Command, Element, Length, Row, Text};
+use iced_winit::{
+    widget::{pick_list, Button, Column, Row, Text},
+    Command, Element, Length,
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -217,8 +220,8 @@ impl std::ops::IndexMut<spirits_within::Spirit> for SpiritSelection {
 #[derive(Debug, Clone)]
 pub struct Application {
     rng: rand::rngs::SmallRng,
-    random_button: iced_winit::button::State,
-    reset_button: iced_winit::button::State,
+    random_button: iced_winit::widget::button::State,
+    reset_button: iced_winit::widget::button::State,
 
     selected: SpiritSelection,
     selection_options: Vec<SelectionOption>,
@@ -352,17 +355,14 @@ impl iced_winit::Program for Application {
     fn view(&mut self) -> Element<'_, Self::Message, Self::Renderer> {
         let mut root = Column::new()
             .push(
-                iced_winit::Container::new(
-                    iced_winit::Row::new()
+                iced_winit::widget::Container::new(
+                    Row::new()
                         .push(
-                            iced_winit::Button::new(
-                                &mut self.random_button,
-                                Text::new("Randomize"),
-                            )
-                            .on_press(Message::Randomize),
+                            Button::new(&mut self.random_button, Text::new("Randomize"))
+                                .on_press(Message::Randomize),
                         )
                         .push(
-                            iced_winit::Button::new(&mut self.reset_button, Text::new("Reset"))
+                            Button::new(&mut self.reset_button, Text::new("Reset"))
                                 .on_press(Message::Reset)
                                 .style(CustomStyle::with_bg(iced_winit::Color::from([
                                     0.9, 0.2, 0.3,
@@ -565,8 +565,8 @@ struct PrerogativesState {
 
     burden_options: Vec<BurdenOption>,
     optional_burdens: Vec<OptionalBurden>,
-    add_button: iced_winit::button::State,
-    remove_button: iced_winit::button::State,
+    add_button: iced_winit::widget::button::State,
+    remove_button: iced_winit::widget::button::State,
 }
 
 impl PrerogativesState {
@@ -660,7 +660,7 @@ impl PrerogativesState {
                 .iter_mut()
                 .enumerate()
                 .map(|(index, (selection, state))| {
-                    iced_winit::Container::new(pick_list::PickList::new(
+                    iced_winit::widget::Container::new(pick_list::PickList::new(
                         state,
                         &self.prerogative_options,
                         Some(*selection),
@@ -722,7 +722,7 @@ impl PrerogativesState {
                 })
                 .collect::<Vec<_>>();
             while optionals.len() < 4 {
-                optionals.push(iced_winit::Space::new(Length::Fill, Length::Shrink).into());
+                optionals.push(iced_winit::widget::Space::new(Length::Fill, Length::Shrink).into());
             }
             let optionals = Row::with_children(optionals)
                 .spacing(2)
@@ -734,7 +734,7 @@ impl PrerogativesState {
                 .width(Length::Fill)
                 .into()
         } else {
-            iced_winit::Space::new(Length::Fill, Length::Shrink).into()
+            iced_winit::widget::Space::new(Length::Fill, Length::Shrink).into()
         };
 
         let titled_prerogs = Column::with_children(vec![

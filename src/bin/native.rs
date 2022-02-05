@@ -24,7 +24,7 @@ pub fn main() {
         .unwrap();
     let window_ctx = unsafe { window_ctx.make_current() }.unwrap();
     let gl = unsafe {
-        use glow::HasContext;
+        // use glow::HasContext;
         use solstice::glow;
         let gl = glow::Context::from_loader_function(|addr| window_ctx.get_proc_address(addr));
         // gl.enable(glow::FRAMEBUFFER_SRGB);
@@ -70,13 +70,8 @@ pub fn main() {
     let seed = rand::RngCore::next_u64(&mut rand::thread_rng());
     let controls = spirits_within_app::Application::new(seed);
 
-    let mut state = program::State::new(
-        controls,
-        viewport.logical_size(),
-        conversion::cursor_position(cursor_position, viewport.scale_factor()),
-        &mut renderer,
-        &mut debug,
-    );
+    let mut state =
+        program::State::new(controls, viewport.logical_size(), &mut renderer, &mut debug);
 
     let epoch = std::time::Instant::now();
 
@@ -175,24 +170,10 @@ pub fn main() {
                     let t = now.duration_since(epoch).as_secs_f32() % DURATION / DURATION;
                     gfx.draw(&mut gl, t);
                 }
-                // game_renderer.render(
-                //     &mut gl,
-                //     state.program().context.state(),
-                //     state.program().context.level(),
-                // );
 
-                // And then iced on top
-                let _mouse_interaction = renderer.backend_mut().draw(
-                    &mut gl,
-                    &viewport,
-                    state.primitive(),
-                    &debug.overlay(),
-                );
-
-                // Update the mouse cursor
-                // window_ctx
-                //     .window()
-                //     .set_cursor_icon(conversion::mouse_interaction(mouse_interaction));
+                renderer.with_primitives(|backend, primitives| {
+                    backend.present(&mut gl, primitives, &viewport, &debug.overlay());
+                });
 
                 window_ctx
                     .swap_buffers()
