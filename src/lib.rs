@@ -295,6 +295,7 @@ impl iced_winit::Program for Application {
             Message::Reset => {
                 self.selected = Default::default();
                 self.update_selection_options();
+                self.prerogatives.clear()
             }
             Message::Randomize => {
                 use rand::Rng;
@@ -588,6 +589,10 @@ impl PrerogativesState {
             add_button: Default::default(),
             remove_button: Default::default(),
         }
+    }
+
+    fn clear(&mut self) {
+        *self = Self::new()
     }
 
     fn update_options(&mut self, mut stats: spirits_within::BaseStats) {

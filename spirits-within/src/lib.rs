@@ -1,3 +1,6 @@
+pub mod character;
+pub mod game;
+
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
