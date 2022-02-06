@@ -31,4 +31,3 @@ enum GameState {
     Mission,
     Downtime,
 }
-
