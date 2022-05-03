@@ -13,6 +13,7 @@ pub enum Message {
     RemoveOptionalBurden,
     Reset,
     Randomize,
+    Export,
 }
 
 #[derive(Debug, Clone)]
@@ -24,6 +25,12 @@ pub struct CharacterCreator {
     selection_options: Vec<SelectionOption>,
 
     prerogatives: PrerogativesState,
+}
+
+impl Default for CharacterCreator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CharacterCreator {
@@ -104,6 +111,7 @@ impl CharacterCreator {
                         state.prerogative = prerogative;
                     });
             }
+            Message::Export => {}
         }
     }
 
@@ -404,7 +412,7 @@ impl OptionalBurden {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 struct PrerogativesState {
     base_prerogatives: [(PrerogativeOption, pick_list::State<PrerogativeOption>); 4],
     prerogative_options: Vec<PrerogativeOption>,
@@ -475,13 +483,8 @@ impl PrerogativesState {
         }
     }
 
-    fn view(
-        &mut self,
-        base_stats: spirits_within::BaseStats,
-    ) -> Element<'_, Message, <crate::Application as iced_winit::Program>::Renderer> {
-        self.update_options(base_stats);
-
-        let stats = if self
+    fn stats(&self, base_stats: spirits_within::BaseStats) -> Result<spirits_within::Stats, ()> {
+        if self
             .base_prerogatives
             .iter()
             .all(|(PrerogativeOption(p), _)| p.is_some())
@@ -496,14 +499,21 @@ impl PrerogativesState {
                     pb.add_burden(b, p);
                 }
             }
-            let stats = base_stats.with_prerogatives_and_burdens(&pb);
-            match stats {
-                Ok(stats) => Some(Text::new(format!("{:#?}", stats))),
-                Err(_) => None,
-            }
+            base_stats.with_prerogatives_and_burdens(&pb)
         } else {
-            None
-        };
+            Err(())
+        }
+    }
+
+    fn view(
+        &mut self,
+        base_stats: spirits_within::BaseStats,
+    ) -> Element<'_, Message, <crate::Application as iced_winit::Program>::Renderer> {
+        self.update_options(base_stats);
+        let stats = self
+            .stats(base_stats)
+            .ok()
+            .map(|stats| Text::new(format!("{:#?}", stats)));
 
         let base_prerogs = Row::with_children(
             self.base_prerogatives
@@ -609,13 +619,13 @@ impl PrerogativesState {
 }
 
 struct CustomStyle {
-    style: iced_solstice::widget::container::Style,
+    style: iced_winit::widget::container::Style,
 }
 
 impl CustomStyle {
     pub fn with_bg(color: iced_winit::Color) -> Self {
         Self {
-            style: iced_solstice::widget::container::Style {
+            style: iced_winit::widget::container::Style {
                 background: Some(iced_solstice::Background::Color(color)),
                 ..Default::default()
             },
@@ -623,15 +633,15 @@ impl CustomStyle {
     }
 }
 
-impl iced_solstice::widget::container::StyleSheet for CustomStyle {
-    fn style(&self) -> iced_solstice::widget::container::Style {
+impl iced_winit::widget::container::StyleSheet for CustomStyle {
+    fn style(&self) -> iced_winit::widget::container::Style {
         self.style
     }
 }
 
-impl iced_solstice::button::StyleSheet for CustomStyle {
-    fn active(&self) -> iced_solstice::button::Style {
-        iced_solstice::button::Style {
+impl iced_winit::widget::button::StyleSheet for CustomStyle {
+    fn active(&self) -> iced_winit::widget::button::Style {
+        iced_winit::widget::button::Style {
             shadow_offset: Default::default(),
             background: self.style.background,
             border_radius: self.style.border_radius,
@@ -689,7 +699,7 @@ impl<'a> IntoIterator for &'a SpiritSelection {
     type IntoIter = std::array::IntoIter<Self::Item, 15>;
 
     fn into_iter(self) -> Self::IntoIter {
-        std::array::IntoIter::new([
+        [
             &self.the_veil,
             &self.mirror,
             &self.the_path,
@@ -705,7 +715,8 @@ impl<'a> IntoIterator for &'a SpiritSelection {
             &self.glamour,
             &self.balance,
             &self.the_pulse,
-        ])
+        ]
+        .into_iter()
     }
 }
 
@@ -714,7 +725,7 @@ impl<'a> IntoIterator for &'a mut SpiritSelection {
     type IntoIter = std::array::IntoIter<Self::Item, 15>;
 
     fn into_iter(self) -> Self::IntoIter {
-        std::array::IntoIter::new([
+        [
             &mut self.the_veil,
             &mut self.mirror,
             &mut self.the_path,
@@ -730,7 +741,8 @@ impl<'a> IntoIterator for &'a mut SpiritSelection {
             &mut self.glamour,
             &mut self.balance,
             &mut self.the_pulse,
-        ])
+        ]
+        .into_iter()
     }
 }
 

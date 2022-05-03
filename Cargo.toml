@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "spirits-within",
     "renderer"
 ]
 
@@ -24,20 +23,20 @@ codegen-units = 1   # trade compile time with maximum optimization
 opt-level = "z"     # optimize for size
 
 [dependencies]
-spirits-within = { path = "./spirits-within" }
+spirits-within = { path = "../spirits-awaken", package = "spirits-awaken" }
 renderer = { path = "./renderer" }
 eyre = "0.6"
 log = "0.4"
 solstice = "0.1"
-iced_solstice = { path = "../iced_solstice" }
+iced_solstice = "0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-iced_glutin = "0.2"
-iced_winit = { version = "0.3" }
+iced_glutin = "0.3"
+iced_winit = "0.4"
 rand = { version = "0.8", features = ["small_rng"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-iced_winit = { version = "0.3", default-features = false }
+iced_winit = { version = "0.4", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 wasm-bindgen = "0.2"
 wasm-logger = "0.2"
@@ -49,9 +48,3 @@ version = "0.3"
 features = [
     "Crypto"
 ]
-
-[patch.crates-io]
-iced_glutin = { path = "../iced/glutin" }
-iced_winit = { path = "../iced/winit" }
-iced_native = { path = "../iced/native" }
-iced_graphics = { path = "../iced/graphics" }
